@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from sklearn.feature_extraction.text import TfidfVectorizer
 import numpy as np
 import os
+import re
 
 
 # Function to extract text from HTML file
@@ -33,6 +34,11 @@ def cosine_similarity(vec1, vec2):
 # Function to search for keyword in TF-IDF matrices
 def search_keyword(keyword, tfidf_matrices):
     results = []
+    pagerank = {}
+    with open("PageRank.txt", "r") as file:
+        for line in file:
+            key,value = line.strip().split(",")
+            pagerank[key] = float(value)
     for file_path, vectorizer, tfidf_matrix in tfidf_matrices:
         feature_names = vectorizer.get_feature_names_out()
         keyword_index = np.where(feature_names == keyword)[0]
@@ -42,7 +48,14 @@ def search_keyword(keyword, tfidf_matrices):
             keyword_vector = np.zeros_like(tfidf_vector)
             keyword_vector[keyword_index] = 1
             similarity = cosine_similarity(tfidf_vector, keyword_vector)
-            results.append((file_path, similarity))
+            weight = input("Enter the weight from 0 - 1: ")
+            weight = float(weight)
+            pattern = r'\d+'
+            match = re.search(pattern, file_path)
+            if match:
+                number = match.group(0)
+                score = weight * pagerank[number] + (1 - weight) * similarity
+                results.append((file_path, score))
     return results
 
 # Main function
@@ -66,7 +79,7 @@ def main():
         print("HTML files containing the keyword, sorted by relevance:")
         results.sort(key=lambda x: x[1], reverse=True)
         for result in results:
-            print(f"{result[0]} (Similarity: {result[1]})")
+            print(f"{result[0]} (Score: {result[1]})")
     else:
         print("No HTML files contain the keyword.")
 
